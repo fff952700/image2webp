@@ -23,12 +23,14 @@ type BucketCfg struct {
 	BucketName    string `toml:"bucketName"`
 	OldBucketName string `toml:"oldBucketName"`
 	FilePath      string `toml:"filePath"`
-	ApiId         string `toml:"apiId"`
 }
 
 type FilterCfg struct {
-	WorkNum     int    `toml:"workNum"`
-	TableName   string `toml:"tableName"`
-	ColumnName  string `toml:"columnName"`
-	SplitFilter string `toml:"splitFilter"`
+	WorkNum       int    `toml:"workNum"`
+	TableName     string `toml:"tableName"`
+	ColumnName    string `toml:"columnName"`
+	SplitFilter   string `toml:"splitFilter"`
+	ApiId         string `toml:"apiId"`
+	ImageBoundsDx int    `toml:"imageBoundsDx"`
+	ImageBoundsDy int    `toml:"imageBoundsDy"`
 }

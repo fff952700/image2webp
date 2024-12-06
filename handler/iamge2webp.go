@@ -3,9 +3,6 @@ package handler
 import (
 	"bytes"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/chai2010/webp"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -14,6 +11,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/chai2010/webp"
+	"github.com/nfnt/resize"
 	"go.uber.org/zap"
 
 	"image2webp/global"
@@ -28,7 +29,7 @@ func ImageServer() {
 	// 使用 Find 查询数据
 	if err := global.DB.Table(global.Conf.FilterInfo.TableName).Select("id,code,image").Where(
 		fmt.Sprintf("%s = ?", global.Conf.FilterInfo.ColumnName),
-		global.Conf.BucketInfo.ApiId).Find(&imageObj).Error; err != nil {
+		global.Conf.FilterInfo.ApiId).Find(&imageObj).Error; err != nil {
 		zap.L().Error("mysql query failed", zap.Error(err))
 		return
 	}
@@ -135,6 +136,10 @@ func downloadAndConvertImage(url, code string, id int64) error {
 		}
 	default:
 		return fmt.Errorf("unsupported image format: %s", format)
+	}
+	// 检查图片大小
+	if img.Bounds().Dx() > global.Conf.FilterInfo.ImageBoundsDx || img.Bounds().Dy() > global.Conf.FilterInfo.ImageBoundsDy {
+		img = resize.Resize(uint(global.Conf.FilterInfo.ImageBoundsDx), uint(global.Conf.FilterInfo.ImageBoundsDy), img, resize.Lanczos3)
 	}
 	// 将图片编码为 WebP 格式
 	webpBytes, err := webp.EncodeRGBA(img, 80)
