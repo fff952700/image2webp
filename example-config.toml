@@ -14,10 +14,13 @@ secretKey = "xxx"
 bucketName = "xxx"
 oldBucketName = "xxx"
 filePath = "/xxx/xxx/"
-apiId = "xxx"
+
 
 [filter]
 workNum = 50
 tableName = "xxx"
 columnName = "xxx"
 splitFilter = "-"
+apiId = "xxx"
+imageBoundsDx = 400
+imageBoundsDy = 400
