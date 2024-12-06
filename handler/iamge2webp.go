@@ -153,9 +153,10 @@ func downloadAndConvertImage(url, code string, id int64) error {
 	uploadPath := filepath.Join(path, rename)
 	uploadRepPath := strings.ReplaceAll(uploadPath, "\\", "/")
 	_, err = global.S3Client.PutObject(&s3.PutObjectInput{
-		Bucket: aws.String(global.Conf.BucketInfo.BucketName),
-		Key:    aws.String(uploadRepPath), // 设置上传路径
-		Body:   bytes.NewReader(webpBytes),
+		Bucket:      aws.String(global.Conf.BucketInfo.BucketName),
+		Key:         aws.String(uploadRepPath), // 设置上传路径
+		Body:        bytes.NewReader(webpBytes),
+		ContentType: aws.String("image/webp"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to upload image to S3: %v", err)
