@@ -3,16 +3,17 @@ package handler
 import (
 	"bytes"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"image"
 	"image/jpeg"
 	"image/png"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/chai2010/webp"
 	"github.com/nfnt/resize"
 	"go.uber.org/zap"
@@ -25,7 +26,6 @@ import (
 func ImageServer() {
 	// 获取图片地址
 	var imageObj []model.Image
-
 	// 使用 Find 查询数据
 	if err := global.DB.Table(global.Conf.FilterInfo.TableName).Select("id,code,image").Where(
 		fmt.Sprintf("%s = ?", global.Conf.FilterInfo.ColumnName),
@@ -33,6 +33,10 @@ func ImageServer() {
 		zap.L().Error("mysql query failed", zap.Error(err))
 		return
 	}
+	//if err := global.DB.Table(global.Conf.FilterInfo.TableName).Select("id,code,image").Find(&imageObj).Error; err != nil {
+	//	zap.L().Error("mysql query failed", zap.Error(err))
+	//	return
+	//}
 
 	if len(imageObj) == 0 {
 		zap.S().Info("No data found")
@@ -104,6 +108,7 @@ func processImage(urlInfo map[string]interface{}) {
 func downloadAndConvertImage(url, code string, id int64) error {
 	// 获取图片格式
 	format := strings.ToLower(filepath.Ext(url))
+	zap.S().Infof("Downloading image %s", url)
 	// 下载图片
 	resp, err := http.Get(url)
 	if err != nil {
@@ -146,10 +151,18 @@ func downloadAndConvertImage(url, code string, id int64) error {
 	if err != nil {
 		return fmt.Errorf("failed to encode webp: %v", err)
 	}
-	parts := strings.Split(code, global.Conf.FilterInfo.SplitFilter)
-	rename := fmt.Sprintf("GameID_%s_EN.webp", parts[len(parts)-1])
+	//parts := strings.Split(code, global.Conf.FilterInfo.SplitFilter)
+	//rename := fmt.Sprintf("GameID_%s_EN.webp", parts[len(parts)-1])
+	rename := fmt.Sprintf("GameID_%d_EN.webp", id)
+	// 保存图片 切割url获取路径
+	// 保存图片到本地
+	//localSavePath := getLocalSavePathFromURL(url)
 	//
-	//// 上传图片到 S3
+	//err = saveImageToLocal(localSavePath, webpBytes)
+	//if err != nil {
+	//	return fmt.Errorf("failed to save image locally: %v", err)
+	//}
+	//上传图片到 S3
 	path := global.Conf.BucketInfo.FilePath
 	if strings.HasSuffix(path, "/") {
 		path = strings.TrimSuffix(path, "/")
@@ -171,5 +184,47 @@ func downloadAndConvertImage(url, code string, id int64) error {
 	global.DB.Table(global.Conf.FilterInfo.TableName).Where("id = ?", id).Update("image", uploadRepPath)
 	// 日志输出
 	zap.S().Infof("Image successfully converted to WebP for code: %s and uploaded to S3", code)
+	return nil
+}
+
+// getLocalSavePathFromURL 从 URL 提取本地保存路径
+func getLocalSavePathFromURL(url string) string {
+	// 提取 URL 中的路径部分，例如 "https://cdn.xxx.com/xxx/xxx/GameID_197_EN.webp"
+	//parsedURL := strings.TrimPrefix(url, "https://")
+	//parsedURL = strings.TrimPrefix(parsedURL, "http://")
+	//parsedURL = strings.TrimPrefix(parsedURL, "cdn.xxx.com/") // 删除域名部分，获取路径
+	//
+	//// 在本地保存路径的基础目录（项目目录）下，保持相同的目录结构
+	baseDir := "./" // 项目目录，当前路径，或根据需要修改
+	//localPath := filepath.Join(baseDir, parsedURL)
+
+	// 创建本地目录（如果不存在）
+	dir := filepath.Dir(baseDir)
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		zap.S().Errorf("Failed to create directory %s: %v", dir, err)
+		return ""
+	}
+
+	// 返回本地保存路径
+	return dir
+}
+
+// saveImageToLocal 保存图片到本地磁盘
+func saveImageToLocal(filePath string, data []byte) error {
+	// 创建文件
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %v", err)
+	}
+	defer file.Close()
+
+	// 写入图片数据
+	_, err = file.Write(data)
+	if err != nil {
+		return fmt.Errorf("failed to write image to file: %v", err)
+	}
+
+	// 返回成功
 	return nil
 }
